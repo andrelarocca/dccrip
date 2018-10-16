@@ -48,24 +48,27 @@ def trace_link(ip):
 
 
 def create_data_msg(destination, payload):
-	return json.dumps({'type': 'data', 
-					   'source': ADDR, 
-					   'destination': destination, 
-					   'payload': payload})
+	return json.dumps(
+		{'type': 'data', 
+		'source': ADDR, 
+		'destination': destination, 
+		'payload': payload})
 
 
 def create_update_msg(destination):
-	return json.dumps({'type': 'update', 
-					   'source': ADDR,
-					   'destination': destination, 
-					   'distances': distances_table})
+	return json.dumps(
+		{'type': 'update', 
+		'source': ADDR, 
+		'destination': destination, 
+		'distances': distances_table})
 
 
 def create_trace_msg(destination):
-	return json.dumps({'type': 'trace', 
-					   'source': ADDR,
-					   'destination': destination, 
-					   'hops': [ADDR]})
+	return json.dumps(
+		{'type': 'trace', 
+		'source': ADDR, 
+		'destination': destination, 
+		'hops': [ADDR]})
 
 # End of functions definitions and beginning of the program	
 if len(sys.argv) > 3:
