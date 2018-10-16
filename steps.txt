@@ -1,0 +1,19 @@
+Passos do TP
+
+- Inicialização (leitura da linha de comando)
+- Dar bind do IP de inicialização
+- Fazer os comandos de linha funcionar
+	- add
+	- del
+	- trace
+	- quit
+- Implementar as mensagens
+	- data
+	- update
+	- trace
+- Atualização periódica
+- Split Horizon
+- Balanceamento de carga
+- Reroteamento imediato
+- Remoção de rotas desatualizadas
+- Implementação de mensagens de rastreamento		
