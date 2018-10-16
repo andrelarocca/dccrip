@@ -3,6 +3,7 @@
 import sys
 import socket
 import json
+import time
 
 ADDR = sys.argv[1]
 PERIOD = sys.argv[2]
@@ -30,7 +31,7 @@ def analyze_input(line):
 	elif command == 'quit':
 		quit()
 	else:
-		print "Comando inválido"
+		print "Invalid command"
 
 
 def add_link(ip, weight):
@@ -51,26 +52,26 @@ def trace_link(ip):
 
 def create_data_msg(destination, payload):
 	return json.dumps(
-		{'type': 'data', 
-		'source': ADDR, 
+		{'type'      : 'data', 
+		'source'     : ADDR, 
 		'destination': destination, 
-		'payload': payload})
+		'payload'    : payload})
 
 
 def create_update_msg(destination):
 	return json.dumps(
-		{'type': 'update', 
-		'source': ADDR, 
+		{'type'      : 'update', 
+		'source'     : ADDR, 
 		'destination': destination, 
-		'distances': distances_table})
+		'distances'  : distances_table})
 
 
 def create_trace_msg(destination):
 	return json.dumps(
-		{'type': 'trace', 
-		'source': ADDR, 
+		{'type'      : 'trace', 
+		'source'     : ADDR, 
 		'destination': destination, 
-		'hops': [ADDR]})
+		'hops'       : [ADDR]})
 
 # End of functions definitions and beginning of the program	
 if len(sys.argv) > 3:
@@ -78,7 +79,7 @@ if len(sys.argv) > 3:
     
     for line in file:
     	analyze_input(line)
-else:
-	while True:
-		line = sys.stdin.readline()
-		analyze_input(line)
+
+while True:
+	line = sys.stdin.readline()
+	analyze_input(line)
