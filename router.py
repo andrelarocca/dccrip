@@ -16,14 +16,16 @@ distances_table = {}
 def analyze_input(line):
 	tokens 	 = line.split()
 	command  = tokens[0]
-	ip 	 	 = tokens[1]
-	weight 	 = tokens[2]
 
 	if command == 'add':
+		ip     = tokens[1]
+		weight = tokens[2]
 		add_link(ip, weight)
 	elif command == 'del':
+		ip = tokens[1]
 		del_link(ip)
 	elif command == 'trace':
+		ip = tokens[1]
 		trace_link(ip)
 	elif command == 'quit':
 		quit()
@@ -78,5 +80,5 @@ if len(sys.argv) > 3:
     	analyze_input(line)
 else:
 	while True:
-		line   = sys.stdin.readline()
+		line = sys.stdin.readline()
 		analyze_input(line)
