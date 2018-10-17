@@ -3,7 +3,7 @@
 import sys
 import socket
 import json
-import time
+from threading import Timer
 
 ADDR = sys.argv[1]
 PERIOD = sys.argv[2]
@@ -73,6 +73,12 @@ def create_trace_msg(destination):
 		'destination': destination, 
 		'hops'       : [ADDR]})
 
+def send_update_msg():
+	Timer(float(PERIOD), send_update_msg, ()).start()
+	for key, value in distances_table.iteritems():
+		msg = create_update_msg(key)
+		# TODO send the message to the destination ip
+
 # End of functions definitions and beginning of the program	
 if len(sys.argv) > 3:
     file = open(sys.argv[3], "rb")
@@ -81,5 +87,6 @@ if len(sys.argv) > 3:
     	analyze_input(line)
 
 while True:
+	send_update_msg()
 	line = sys.stdin.readline()
 	analyze_input(line)
