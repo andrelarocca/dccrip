@@ -17,71 +17,82 @@ server.bind(BIND)
 
 distances_table = {}
 
-def analyze_input(line):
-	tokens 	 = line.split()
-	command  = tokens[0]
 
-	if command == 'add':
-		ip     = tokens[1]
-		weight = tokens[2]
-		add_link(ip, weight)
-	elif command == 'del':
-		ip = tokens[1]
-		del_link(ip)
-	elif command == 'trace':
-		ip = tokens[1]
-		trace_link(ip)
-	elif command == 'quit':
-		quit()
-	else:
-		print "Invalid command"
+def get_input():
+    cmd = raw_input()
+    if cmd:
+        return cmd
+
+
+def analyze_input(line):
+    tokens = line.split()
+    command = tokens[0]
+
+    if command == 'add':
+        ip = tokens[1]
+        weight = tokens[2]
+        add_link(ip, weight)
+    elif command == 'del':
+        ip = tokens[1]
+        del_link(ip)
+    elif command == 'trace':
+        ip = tokens[1]
+        trace_link(ip)
+    elif command == 'quit':
+        end()
+    else:
+        print "Invalid command"
 
 
 def add_link(ip, weight):
-	distances_table[ip] = weight
+    distances_table[ip] = weight
 
 
 def del_link(ip):
-	del distances_table[ip]	
+    del distances_table[ip]
 
 
-def quit():
+def end():
     server_thread.terminate()
-    keyboard_thread.terminate()
+    server_thread.join()
     sys.exit()
 
 
 def trace_link(ip):
-	quit()
+    end()
 
 
 def create_data_msg(destination, payload):
-	return json.dumps(
-		{'type'      : 'data', 
-		'source'     : ADDR, 
-		'destination': destination, 
-		'payload'    : payload})
+    return json.dumps({
+        'type': 'data',
+        'source': ADDR,
+        'destination': destination,
+        'payload': payload
+    })
 
 
 def create_update_msg(destination):
-	return json.dumps(
-		{'type'      : 'update', 
-		'source'     : ADDR, 
-		'destination': destination, 
-		'distances'  : distances_table})
+    return json.dumps({
+        'type': 'update',
+        'source': ADDR,
+        'destination': destination,
+        'distances': distances_table
+    })
 
 
 def create_trace_msg(destination):
-	return json.dumps(
-		{'type'      : 'trace', 
-		'source'     : ADDR, 
-		'destination': destination, 
-		'hops'       : [ADDR]})
+    return json.dumps({
+        'type': 'trace',
+        'source': ADDR,
+        'destination': destination,
+        'hops': [ADDR]
+    })
+
 
 def send_update_msg():
     threading.Timer(float(PERIOD), send_update_msg, ()).start()
     for key, value in distances_table.iteritems():
-		send_message(key, create_update_msg(key))
+        send_message(key, create_update_msg(key))
 
 
 def send_message(address, message):
@@ -94,9 +105,9 @@ def rec_message(data, address):
 
 # End of functions definitions and beginning of the program
 if len(sys.argv) > 3:
-    file = open(sys.argv[3], "rb")
-    for line in file:
-    	analyze_input(line)
+    startup_file = open(sys.argv[3], "rb")
+    for file_line in startup_file:
+        analyze_input(file_line)
 
 
 # Starts the update message thread
@@ -110,12 +121,14 @@ def server_listen():
         rec_message(data, address)
 
 
-def keyboard_listen():
-    print("escitando teclado")
-    # while True:
-    #     line = sys.stdin.readline()
-    #     analyze_input(line)
+server_thread = multiprocessing.Process(target=server_listen)
+server_thread.start()
 
+# Listens to keyboard
+user_input = get_input()
+while user_input != 'quit':
+    analyze_input(user_input)
+    user_input = get_input()
 
-server_thread = multiprocessing.Process(target=server_listen).start()
-keyboard_thread = multiprocessing.Process(target=keyboard_listen).start()
+# Finish execution
+end()
