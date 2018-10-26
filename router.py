@@ -10,13 +10,24 @@ ADDR = sys.argv[1]
 PORT = int(5511)
 BIND = (ADDR, PORT)
 PERIOD = sys.argv[2]
+DEFAULT_TIME = 1
 
 server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(BIND)
 
-distances_table = {}
+class Route:
+    cost = 0
+    nextHop = ""
+    time_to_live = 0
+    
+    def set(self, cost, nextHop):
+        self.cost = cost
+        self.nextHop = nextHop
+        self.time_to_live = PERIOD
 
+distances_table = {}
+routing_table = {}        
 
 def get_input():
     cmd = raw_input()
@@ -30,7 +41,7 @@ def analyze_input(line):
 
     if command == 'add':
         ip = tokens[1]
-        weight = tokens[2]
+        weight = int(tokens[2])
         add_link(ip, weight)
     elif command == 'del':
         ip = tokens[1]
@@ -46,10 +57,14 @@ def analyze_input(line):
 
 def add_link(ip, weight):
     distances_table[ip] = weight
+    current_link = Route()
+    current_link.set(weight, ip)
+    routing_table[ip] = current_link
 
 
 def del_link(ip):
     del distances_table[ip]
+    del routing_table[ip]
 
 
 def end():
@@ -91,16 +106,36 @@ def create_trace_msg(destination):
 
 def send_update_msg():
     threading.Timer(float(PERIOD), send_update_msg, ()).start()
+    # TODO implement split horizon
     for key, value in distances_table.iteritems():
         send_message(key, create_update_msg(key))
 
 
 def send_message(address, message):
+    # TODO implement load balance
     server.sendto(message, (address, PORT))
 
 
 def rec_message(data, address):
     print(data, address)
+    # TODO merge the update message route to the routing_table
+
+
+def handle_routing_table:
+    threading.Timer(float(DEFAULT_TIME), update_routing_table, ()).start()
+    for key, route in routing_table.iteritems():
+        route.time_to_live -= 1
+        if route.time_to_live == 0:
+            del_link(key)
+
+
+def merge_route(address, newRoute):
+    if (newRoute.cost + routing_table[newRoute.nextHop]) < routing_table[address].cost:
+        newRoute.cost += routing_table[newRoute.nextHop]
+        newRoute.time_to_live = PERIOD
+        routing_table[address] = newRoute
+    else:
+        routing_table[address].time_to_live = PERIOD
 
 
 # End of functions definitions and beginning of the program
@@ -113,6 +148,8 @@ if len(sys.argv) > 3:
 # Starts the update message thread
 send_update_msg()
 
+# Starts the handle routing table thread
+handle_routing_table()
 
 # Threads for interaction
 def server_listen():
