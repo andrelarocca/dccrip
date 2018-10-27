@@ -16,6 +16,7 @@ server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(BIND)
 
+
 class Route:
     cost = 0
     nextHop = ""
@@ -26,8 +27,10 @@ class Route:
         self.nextHop = nextHop
         self.time_to_live = PERIOD
 
+
 distances_table = {}
 routing_table = {}        
+
 
 def get_input():
     cmd = raw_input()
@@ -74,7 +77,8 @@ def end():
 
 
 def trace_link(ip):
-    end()
+    message = create_trace_msg(ip)
+    send_message(ip, message)
 
 
 def create_data_msg(destination, payload):
@@ -118,16 +122,22 @@ def send_message(address, message):
 
 def rec_message(data, address):
     message = json.loads(data)
-    type = message['type']
-    if type == 'update':
+    message_type = message['type']
+    if message_type == 'update':
         print("todo")
         # TODO call merge route
-    elif type == 'data':
+    elif message_type == 'data':
         print(message['payload'])
-    elif type == 'trace':
-        print("todo")
-        # TODO handle trace
+    elif message_type == 'trace':
+        handle_trace(message, address)
 
+
+def handle_trace(message, ip):
+    message['hops'].append(ADDR)
+    if message['destination'] == ADDR:
+        send_message(message['source'], json.dumps(message))
+    else:
+        send_message(ip, json.dumps(message))
 
 
 def handle_routing_table():
@@ -157,8 +167,10 @@ if len(sys.argv) > 3:
 # Starts the update message thread
 send_update_msg()
 
+
 # Starts the handle routing table thread
-#handle_routing_table()
+# handle_routing_table()
+
 
 # Threads for interaction
 def server_listen():
