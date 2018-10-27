@@ -9,7 +9,7 @@ import multiprocessing
 ADDR = sys.argv[1]
 PORT = int(5511)
 BIND = (ADDR, PORT)
-PERIOD = sys.argv[2]
+PERIOD = int(sys.argv[2])
 DEFAULT_TIME = 1
 
 server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -105,10 +105,10 @@ def create_trace_msg(destination):
 
 
 def send_update_msg():
-    threading.Timer(float(PERIOD), send_update_msg, ()).start()
     # TODO implement split horizon
     for key, value in distances_table.iteritems():
         send_message(key, create_update_msg(key))
+    threading.Timer(float(PERIOD), send_update_msg, ()).start()
 
 
 def send_message(address, message):
@@ -117,16 +117,25 @@ def send_message(address, message):
 
 
 def rec_message(data, address):
-    print(data, address)
-    # TODO merge the update message route to the routing_table
+    message = json.loads(data)
+    type = message['type']
+    if type == 'update':
+        print("todo")
+        # TODO call merge route
+    elif type == 'data':
+        print(message['payload'])
+    elif type == 'trace':
+        print("todo")
+        # TODO handle trace
 
 
-def handle_routing_table:
-    threading.Timer(float(DEFAULT_TIME), update_routing_table, ()).start()
+
+def handle_routing_table():
     for key, route in routing_table.iteritems():
         route.time_to_live -= 1
         if route.time_to_live == 0:
             del_link(key)
+    threading.Timer(float(DEFAULT_TIME), handle_routing_table, ()).start()
 
 
 def merge_route(address, newRoute):
@@ -149,7 +158,7 @@ if len(sys.argv) > 3:
 send_update_msg()
 
 # Starts the handle routing table thread
-handle_routing_table()
+#handle_routing_table()
 
 # Threads for interaction
 def server_listen():
