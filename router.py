@@ -21,12 +21,13 @@ class Route:
     cost = 0
     nextHop = ""
     time_to_live = 0
+    sent = False
     
     def set(self, cost, nextHop):
         self.cost = cost
         self.nextHop = nextHop
         self.time_to_live = PERIOD
-
+        self.sent = False
 
 distances_table = {}
 routing_table = {}        
@@ -59,15 +60,20 @@ def analyze_input(line):
 
 
 def add_link(ip, weight):
+    # Save the neighborhood distance
     distances_table[ip] = weight
+    
+    routes = {}
+    routes[weight] = []
     current_link = Route()
     current_link.set(weight, ip)
-    routing_table[ip] = current_link
+    routes[weight].append(current_link)
+    routing_table[ip] = routes
 
 
 def del_link(ip):
     del distances_table[ip]
-    del routing_table[ip]
+    # del routing_table[ip]
 
 
 def end():
@@ -91,11 +97,15 @@ def create_data_msg(destination, payload):
 
 
 def create_update_msg(destination):
+    current_distances = distances_table.copy()
+    # Remove the destination from the distances message
+    del current_distances[destination]
+
     return json.dumps({
         'type': 'update',
         'source': ADDR,
         'destination': destination,
-        'distances': distances_table
+        'distances': current_distances
     })
 
 
@@ -109,23 +119,44 @@ def create_trace_msg(destination):
 
 
 def send_update_msg():
-    # TODO implement split horizon
+    # TODO finish split horizon
     for key, value in distances_table.iteritems():
         send_message(key, create_update_msg(key))
     threading.Timer(float(PERIOD), send_update_msg, ()).start()
 
 
 def send_message(address, message):
-    # TODO implement load balance
-    server.sendto(message, (address, PORT))
+    costs = routing_table[address]
+    destination = ''
+    selected_cost = 0
+    selected_route = Route()
+
+    for cost, routes in costs.iteritems():
+        selected_cost = cost
+        for route in routes:
+            if route.sent == False:
+                destination = route.nextHop
+                if len(routes) > 1:
+                    route.sent = True
+                selected_route = route
+                break
+
+
+    # Set all the not selected routes as not sent
+    for route in costs[selected_cost]:
+        if route != selected_route:
+            route.sent = False            
+
+    server.sendto(message, (destination, PORT))
 
 
 def rec_message(data, address):
     message = json.loads(data)
     message_type = message['type']
+    print message_type
     if message_type == 'update':
-        print("todo")
-        # TODO call merge route
+        print("todo")           
+        handle_update(message, address)
     elif message_type == 'data':
         print(message['payload'])
     elif message_type == 'trace':
@@ -141,20 +172,51 @@ def handle_trace(message, ip):
 
 
 def handle_routing_table():
-    for key, route in routing_table.iteritems():
-        route.time_to_live -= 1
-        if route.time_to_live == 0:
-            del_link(key)
+    for ip, costs in routing_table.iteritems():
+        for cost, routes in costs.iteritems():
+            for route in routes:
+                route.time_to_live -= 1
+                if route.time_to_live == 0:
+                    remove_route(ip, cost, routes, route)
     threading.Timer(float(DEFAULT_TIME), handle_routing_table, ()).start()
 
 
-def merge_route(address, newRoute):
-    if (newRoute.cost + routing_table[newRoute.nextHop]) < routing_table[address].cost:
-        newRoute.cost += routing_table[newRoute.nextHop]
-        newRoute.time_to_live = PERIOD
-        routing_table[address] = newRoute
+def remove_route(ip, cost, routes, route):
+    routes.remove(route)
+
+    # Verify if the routes array is empty
+    if not routes:
+        del routing_table[ip][cost]
+        # Verify if there is any other route to that ip address
+        if len(routing_table[ip]) == 0:
+            del distances_table[ip]
+        else:
+            # TODO Get the next feasible cost and update distances_table with the new cost
+            print("todo")
     else:
-        routing_table[address].time_to_live = PERIOD
+        return
+
+
+def merge_route(address, newRoute):
+    routes = routing_table[address][newRoute.cost]
+    route_exist = False
+    for route in routes:
+        if route.cost == newRoute.cost and route.nextHop == newRoute.nextHop:
+            route_exist = True
+            # Update time of the route
+            route.time_to_live = PERIOD
+            break
+    if(route_exist == False):
+        routes.append(newRoute)
+
+
+def handle_update(message, address):
+    links = message['distances']
+    for ip, distance in links.iteritems():
+        current_link = Route()
+        weight = distance + distances_table[address]
+        current_link.set(weight, address)
+        merge_route(ip, current_link)
 
 
 # End of functions definitions and beginning of the program
@@ -169,7 +231,7 @@ send_update_msg()
 
 
 # Starts the handle routing table thread
-# handle_routing_table()
+handle_routing_table()
 
 
 # Threads for interaction
