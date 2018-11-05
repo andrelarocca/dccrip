@@ -16,7 +16,6 @@ server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(BIND)
 
-
 class Route:
     cost = 0
     nextHop = ""
@@ -31,7 +30,6 @@ class Route:
 
 distances_table = {}
 routing_table = {}        
-
 
 def get_input():
     cmd = raw_input()
@@ -73,7 +71,7 @@ def add_link(ip, weight):
 
 def del_link(ip):
     del distances_table[ip]
-    # del routing_table[ip]
+    del routing_table[ip]
 
 
 def end():
@@ -172,10 +170,11 @@ def handle_trace(message, ip):
 
 
 def handle_routing_table():
-    for ip, costs in routing_table.iteritems():
-        for cost, routes in costs.iteritems():
+    print(routing_table)
+    for ip, costs in routing_table.copy().iteritems():
+        for cost, routes in costs.copy().iteritems():
             for route in routes:
-                route.time_to_live -= 1
+                route.time_to_live -= DEFAULT_TIME
                 if route.time_to_live == 0:
                     remove_route(ip, cost, routes, route)
     threading.Timer(float(DEFAULT_TIME), handle_routing_table, ()).start()
@@ -189,7 +188,7 @@ def remove_route(ip, cost, routes, route):
         del routing_table[ip][cost]
         # Verify if there is any other route to that ip address
         if len(routing_table[ip]) == 0:
-            del distances_table[ip]
+            del_link(ip)
         else:
             # TODO Get the next feasible cost and update distances_table with the new cost
             print("todo")
@@ -219,6 +218,13 @@ def handle_update(message, address):
         merge_route(ip, current_link)
 
 
+# Threads for interaction
+def server_listen():
+    while True:
+        (data, address) = server.recvfrom(4096)
+        rec_message(data, address)
+
+
 # End of functions definitions and beginning of the program
 if len(sys.argv) > 3:
     startup_file = open(sys.argv[3], "rb")
@@ -232,14 +238,6 @@ send_update_msg()
 
 # Starts the handle routing table thread
 handle_routing_table()
-
-
-# Threads for interaction
-def server_listen():
-    while True:
-        (data, address) = server.recvfrom(4096)
-        rec_message(data, address)
-
 
 server_thread = multiprocessing.Process(target=server_listen)
 server_thread.start()
