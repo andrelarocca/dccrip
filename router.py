@@ -16,6 +16,7 @@ server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(BIND)
 
+
 class Route:
     cost = 0
     nextHop = ""
@@ -28,8 +29,10 @@ class Route:
         self.time_to_live = PERIOD
         self.sent = False
 
+
 neighbors = {}
 routing_table = {}        
+
 
 def get_input():
     cmd = raw_input()
@@ -131,7 +134,7 @@ def send_message(address, message):
         selected_cost = key
         routes = costs[key]
         for route in routes:
-            if route.sent == False:
+            if not route.sent:
                 destination = route.nextHop
                 if len(routes) > 1:
                     route.sent = True
@@ -204,7 +207,7 @@ def merge_route(address, newRoute):
             # Updates time of the route
             route.time_to_live = PERIOD
             break
-    if(route_exist == False):
+    if not route_exist:
         routes.append(newRoute)
 
 
@@ -234,6 +237,7 @@ def create_distances_table(destination):
                 if found_shortest_distance:
                     break
     return distances_table                
+
 
 # Threads for interaction
 def server_listen():
