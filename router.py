@@ -21,14 +21,14 @@ class Route:
     nextHop = ""
     time_to_live = 0
     sent = False
-    
+
     def set(self, cost, nextHop):
         self.cost = cost
         self.nextHop = nextHop
         self.time_to_live = PERIOD
         self.sent = False
 
-distances_table = {}
+neighbors = {}
 routing_table = {}        
 
 def get_input():
@@ -40,7 +40,6 @@ def get_input():
 def analyze_input(line):
     tokens = line.split()
     command = tokens[0]
-
     if command == 'add':
         ip = tokens[1]
         weight = int(tokens[2])
@@ -58,9 +57,8 @@ def analyze_input(line):
 
 
 def add_link(ip, weight):
-    # Save the neighborhood distance
-    distances_table[ip] = weight
-    
+    # Saves the neighborhood distance
+    neighbors[ip] = weight
     routes = {}
     routes[weight] = []
     current_link = Route()
@@ -69,9 +67,12 @@ def add_link(ip, weight):
     routing_table[ip] = routes
 
 
-def del_link(ip):
-    del distances_table[ip]
-    del routing_table[ip]
+def del_link(address):
+    for ip, costs in routing_table.copy().iteritems():
+        for cost, routes in costs.copy().iteritems():
+            for route in routes:
+                if route.nextHop == address:
+                    remove_route(ip, cost, routes, route)
 
 
 def end():
@@ -95,15 +96,11 @@ def create_data_msg(destination, payload):
 
 
 def create_update_msg(destination):
-    current_distances = distances_table.copy()
-    # Remove the destination from the distances message
-    del current_distances[destination]
-
     return json.dumps({
         'type': 'update',
         'source': ADDR,
         'destination': destination,
-        'distances': current_distances
+        'distances': create_distances_table(destination)
     })
 
 
@@ -117,8 +114,7 @@ def create_trace_msg(destination):
 
 
 def send_update_msg():
-    # TODO finish split horizon
-    for key, value in distances_table.iteritems():
+    for key, value in neighbors.iteritems():
         send_message(key, create_update_msg(key))
     threading.Timer(float(PERIOD), send_update_msg, ()).start()
 
@@ -128,9 +124,12 @@ def send_message(address, message):
     destination = ''
     selected_cost = 0
     selected_route = Route()
+    keylist = costs.keys()
+    keylist.sort()
 
-    for cost, routes in costs.iteritems():
-        selected_cost = cost
+    for key in keylist:
+        selected_cost = key
+        routes = costs[key]
         for route in routes:
             if route.sent == False:
                 destination = route.nextHop
@@ -138,9 +137,7 @@ def send_message(address, message):
                     route.sent = True
                 selected_route = route
                 break
-
-
-    # Set all the not selected routes as not sent
+    # Sets all the not selected routes as not sent
     for route in costs[selected_cost]:
         if route != selected_route:
             route.sent = False            
@@ -151,9 +148,7 @@ def send_message(address, message):
 def rec_message(data, address):
     message = json.loads(data)
     message_type = message['type']
-    print message_type
     if message_type == 'update':
-        print("todo")           
         handle_update(message, address)
     elif message_type == 'data':
         print(message['payload'])
@@ -170,7 +165,6 @@ def handle_trace(message, ip):
 
 
 def handle_routing_table():
-    print(routing_table)
     for ip, costs in routing_table.copy().iteritems():
         for cost, routes in costs.copy().iteritems():
             for route in routes:
@@ -182,27 +176,32 @@ def handle_routing_table():
 
 def remove_route(ip, cost, routes, route):
     routes.remove(route)
-
-    # Verify if the routes array is empty
+    # Verifies if the routes array is empty
     if not routes:
         del routing_table[ip][cost]
-        # Verify if there is any other route to that ip address
+        # Verifies if there is any other route to that ip address
         if len(routing_table[ip]) == 0:
-            del_link(ip)
-        else:
-            # TODO Get the next feasible cost and update distances_table with the new cost
-            print("todo")
-    else:
-        return
+            del routing_table[ip]
+            # Verifies if the empty link is in the neighbors table and removes if necessary
+            if neighbors.has_key(ip):
+                del neighbors[ip]
 
 
 def merge_route(address, newRoute):
-    routes = routing_table[address][newRoute.cost]
+    if routing_table.has_key(address):
+        if not routing_table[address].has_key(newRoute.cost):
+            routing_table[address][newRoute.cost] = []
+    else:
+        routing_table[address] = {}
+        costs = {}
+        costs[newRoute.costs] = []
+        routing_table[address] = costs        
+    routes = routing_table[address][newRoute.cost]        
     route_exist = False
     for route in routes:
         if route.cost == newRoute.cost and route.nextHop == newRoute.nextHop:
             route_exist = True
-            # Update time of the route
+            # Updates time of the route
             route.time_to_live = PERIOD
             break
     if(route_exist == False):
@@ -213,10 +212,28 @@ def handle_update(message, address):
     links = message['distances']
     for ip, distance in links.iteritems():
         current_link = Route()
-        weight = distance + distances_table[address]
+        weight = distance + neighbors[address]
         current_link.set(weight, address)
         merge_route(ip, current_link)
 
+
+def create_distances_table(destination):
+    distances_table = {}
+    for ip, costs in routing_table.copy().iteritems(): 
+        if ip != destination: 
+            found_shortest_distance = False
+            keylist = costs.keys()
+            keylist.sort()
+            for key in keylist:
+                routes = costs[key]
+                for route in routes:
+                    if route.nextHop != destination:
+                        distances_table[ip] = route.cost
+                        found_shortest_distance = True
+                        break
+                if found_shortest_distance:
+                    break
+    return distances_table                
 
 # Threads for interaction
 def server_listen():
