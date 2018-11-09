@@ -6,11 +6,29 @@ import json
 import threading
 import multiprocessing
 
-ADDR = sys.argv[1]
+
+for i in range(len(sys.argv)):
+    if sys.argv[i].startswith("--"):
+        [key, value] = sys.argv[i].split('=')
+        if key == "--addr":
+            ADDR = value
+        elif key == "--update-period":
+            PERIOD = int(value)
+        elif key == "--startup-commands":
+            FILE_NAME = value
+    else:
+        if i == 1:
+            ADDR = sys.argv[i]
+        elif i == 2:
+            PERIOD = int(sys.argv[i])
+        elif i == 3:
+            FILE_NAME = sys.argv[i]
+
+
 PORT = int(5511)
 BIND = (ADDR, PORT)
-PERIOD = int(sys.argv[2])
 DEFAULT_TIME = 1
+
 
 server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -31,7 +49,7 @@ class Route:
 
 
 neighbors = {}
-routing_table = {}        
+routing_table = {}
 
 
 def get_input():
@@ -143,7 +161,7 @@ def send_message(address, message):
     # Sets all the not selected routes as not sent
     for route in costs[selected_cost]:
         if route != selected_route:
-            route.sent = False            
+            route.sent = False
 
     server.sendto(message, (destination, PORT))
 
@@ -198,8 +216,8 @@ def merge_route(address, newRoute):
         routing_table[address] = {}
         costs = {}
         costs[newRoute.costs] = []
-        routing_table[address] = costs        
-    routes = routing_table[address][newRoute.cost]        
+        routing_table[address] = costs
+    routes = routing_table[address][newRoute.cost]
     route_exist = False
     for route in routes:
         if route.cost == newRoute.cost and route.nextHop == newRoute.nextHop:
@@ -222,8 +240,8 @@ def handle_update(message, address):
 
 def create_distances_table(destination):
     distances_table = {}
-    for ip, costs in routing_table.copy().iteritems(): 
-        if ip != destination: 
+    for ip, costs in routing_table.copy().iteritems():
+        if ip != destination:
             found_shortest_distance = False
             keylist = costs.keys()
             keylist.sort()
@@ -236,7 +254,7 @@ def create_distances_table(destination):
                         break
                 if found_shortest_distance:
                     break
-    return distances_table                
+    return distances_table
 
 
 # Threads for interaction
@@ -247,8 +265,8 @@ def server_listen():
 
 
 # End of functions definitions and beginning of the program
-if len(sys.argv) > 3:
-    startup_file = open(sys.argv[3], "rb")
+if FILE_NAME:
+    startup_file = open(FILE_NAME, "rb")
     for file_line in startup_file:
         analyze_input(file_line)
 
@@ -260,14 +278,17 @@ send_update_msg()
 # Starts the handle routing table thread
 handle_routing_table()
 
+
 server_thread = multiprocessing.Process(target=server_listen)
 server_thread.start()
+
 
 # Listens to keyboard
 user_input = get_input()
 while user_input != 'quit':
     analyze_input(user_input)
     user_input = get_input()
+
 
 # Finish execution
 end()
