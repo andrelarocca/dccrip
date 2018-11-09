@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-exe="python3.5 ../../router.pyc"
+exe="python ../../router.pyc"
 exe="../../router.py"
 
 for i in $(seq 1 6) ; do
