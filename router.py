@@ -7,15 +7,17 @@ import threading
 import multiprocessing
 
 
-for i in range(len(sys.argv)):
+i = 0
+while i < len(sys.argv):
     if sys.argv[i].startswith("--"):
-        [key, value] = sys.argv[i].split('=')
+        key = sys.argv[i]
         if key == "--addr":
-            ADDR = value
+            ADDR = sys.argv[i + 1]
         elif key == "--update-period":
-            PERIOD = int(value)
+            PERIOD = int(sys.argv[i + 1])
         elif key == "--startup-commands":
-            FILE_NAME = value
+            FILE_NAME = sys.argv[i + 1]
+        i += 2
     else:
         if i == 1:
             ADDR = sys.argv[i]
@@ -23,6 +25,7 @@ for i in range(len(sys.argv)):
             PERIOD = int(sys.argv[i])
         elif i == 3:
             FILE_NAME = sys.argv[i]
+        i += 1
 
 
 PORT = int(5511)
